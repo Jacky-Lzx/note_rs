@@ -17,11 +17,21 @@ use unicode_width::UnicodeWidthStr;
 /// App holds the state of the application
 struct App {
     notes: Vec<String>,
+    mode: InputMode,
+    input: String,
+}
+enum InputMode {
+    Normal,
+    Editing,
 }
 
 impl Default for App {
     fn default() -> App {
-        App { notes: Vec::new() }
+        App {
+            input: String::new(),
+            notes: Vec::new(),
+            mode: InputMode::Normal,
+        }
     }
 }
 
@@ -58,12 +68,31 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
         terminal.draw(|f| ui(f, &app))?;
 
         if let Event::Key(key) = event::read()? {
-            match key.code {
-                KeyCode::Char('q') => {
-                    return Ok(());
-                }
-                KeyCode::Char('a') => app.notes.push(String::from("abc")),
-                _ => {}
+            match app.mode {
+                InputMode::Normal => match key.code {
+                    KeyCode::Char('q') => {
+                        return Ok(());
+                    }
+                    KeyCode::Char('a') => app.mode = InputMode::Editing,
+                    _ => {}
+                },
+                InputMode::Editing => match key.code {
+                    KeyCode::Esc => {
+                        app.mode = InputMode::Normal;
+                    }
+                    // KeyCode::Char('a') => app.notes.push(String::from("abc")),
+                    KeyCode::Char(c) => {
+                        app.input.push(c);
+                    }
+                    KeyCode::Enter => {
+                        app.notes.push(app.input.drain(..).collect());
+                        app.input.clear();
+                    }
+                    KeyCode::Backspace => {
+                        app.input.pop();
+                    }
+                    _ => {}
+                },
             }
         }
     }
@@ -73,7 +102,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
-        .constraints([Constraint::Percentage(100)].as_ref())
+        .constraints([Constraint::Length(3), Constraint::Min(1)].as_ref())
         .split(f.size());
 
     let mut texts: Vec<Spans> = Vec::new();
@@ -82,7 +111,31 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         texts.push(Spans::from(&note[..]));
     }
 
+    let input_area = Paragraph::new(app.input.as_ref())
+        .style(match app.mode {
+            InputMode::Normal => Style::default(),
+            InputMode::Editing => Style::default().fg(Color::Yellow),
+        })
+        .block(Block::default().borders(Borders::ALL).title("Input"));
+    f.render_widget(input_area, chunks[0]);
+
     let help_message =
         Paragraph::new(texts).block(Block::default().borders(Borders::ALL).title("Notes"));
-    f.render_widget(help_message, chunks[0]);
+    f.render_widget(help_message, chunks[1]);
+
+    match app.mode {
+        InputMode::Normal =>
+            // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
+            {}
+
+        InputMode::Editing => {
+            // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+            f.set_cursor(
+                // Put cursor past the end of the input text
+                chunks[0].x + app.input.width() as u16 + 1,
+                // Move one line down, from the border to the input line
+                chunks[0].y + 1,
+            )
+        }
+    }
 }

@@ -15,11 +15,13 @@ use tui::{
 use unicode_width::UnicodeWidthStr;
 
 /// App holds the state of the application
-struct App {}
+struct App {
+    notes: Vec<String>,
+}
 
 impl Default for App {
     fn default() -> App {
-        App {}
+        App { notes: Vec::new() }
     }
 }
 
@@ -60,6 +62,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                 KeyCode::Char('q') => {
                     return Ok(());
                 }
+                KeyCode::Char('a') => app.notes.push(String::from("abc")),
                 _ => {}
             }
         }
@@ -73,10 +76,13 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         .constraints([Constraint::Percentage(100)].as_ref())
         .split(f.size());
 
-    let msg = String::from("Hello world.");
+    let mut texts: Vec<Spans> = Vec::new();
 
-    let text = Text::from(Spans::from(msg));
+    for note in &app.notes {
+        texts.push(Spans::from(&note[..]));
+    }
+
     let help_message =
-        Paragraph::new(text).block(Block::default().borders(Borders::ALL).title("Notes"));
+        Paragraph::new(texts).block(Block::default().borders(Borders::ALL).title("Notes"));
     f.render_widget(help_message, chunks[0]);
 }

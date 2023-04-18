@@ -14,6 +14,10 @@ use tui::{
 };
 use unicode_width::UnicodeWidthStr;
 
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+
 /// App holds the state of the application
 struct App {
     notes: Vec<String>,
@@ -27,9 +31,11 @@ enum InputMode {
 
 impl Default for App {
     fn default() -> App {
+        let notes_file: Vec<String> = read_from_file();
+        // Read from file
         App {
             input: String::new(),
-            notes: Vec::new(),
+            notes: notes_file,
             mode: InputMode::Normal,
         }
     }
@@ -63,6 +69,40 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn read_from_file() -> Vec<String> {
+    let mut notes: Vec<String> = Vec::new();
+    // Open the file in read-only mode.
+    let file = File::open("notes.txt").unwrap();
+    // Read the file line by line, and return an iterator of the lines of the file.
+    let lines = io::BufReader::new(file).lines();
+    for line in lines {
+        if let Ok(note) = line {
+            notes.push(note);
+        }
+    }
+    return notes;
+}
+
+fn write_to_file(notes: Vec<String>) {
+    let path = Path::new("notes.txt");
+    let display = path.display();
+
+    // Open a file in write-only mode, returns `io::Result<File>`
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("couldn't create {}: {}", display, why),
+        Ok(file) => file,
+    };
+
+    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
+    for note in &notes {
+        let note_write = String::from(note) + "\n";
+        match file.write_all(note_write.as_bytes()) {
+            Err(why) => panic!("couldn't write to {}: {}", display, why),
+            Ok(_) => println!("successfully wrote to {}", display),
+        }
+    }
+}
+
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
     loop {
         terminal.draw(|f| ui(f, &app))?;
@@ -71,6 +111,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
             match app.mode {
                 InputMode::Normal => match key.code {
                     KeyCode::Char('q') => {
+                        write_to_file(app.notes);
                         return Ok(());
                     }
                     KeyCode::Char('a') => app.mode = InputMode::Editing,

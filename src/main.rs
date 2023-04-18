@@ -107,8 +107,10 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
 
     let mut texts: Vec<Spans> = Vec::new();
 
+    let mut index = 0;
     for note in &app.notes {
-        texts.push(Spans::from(&note[..]));
+        texts.push(Spans::from(format!("{index}: {note}")));
+        index += 1;
     }
 
     let input_area = Paragraph::new(app.input.as_ref())

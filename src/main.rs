@@ -102,7 +102,9 @@ fn write_to_file(notes: Vec<String>) {
         let note_write = String::from(note) + "\n";
         match file.write_all(note_write.as_bytes()) {
             Err(why) => panic!("couldn't write to {}: {}", display, why),
-            Ok(_) => println!("successfully wrote to {}", display),
+            Ok(_) => {
+                // println!("successfully wrote to {}", display),
+            }
         }
     }
 }
@@ -117,6 +119,35 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     KeyCode::Char('q') => {
                         write_to_file(app.notes);
                         return Ok(());
+                    }
+                    KeyCode::Char('e') => {
+                        use std::process::Command;
+
+                        Command::new("nvim")
+                            .arg("/tmp/note_rs.tmp")
+                            .status()
+                            .expect("failed to execute process");
+
+                        if std::path::Path::new("/tmp/note_rs.tmp").exists() {
+                            // Open the file in read-only mode.
+                            let file = File::open("/tmp/note_rs.tmp").unwrap();
+                            // Read the file line by line, and return an iterator of the lines of the file.
+                            let lines = io::BufReader::new(file).lines();
+                            for line in lines {
+                                if let Ok(note) = line {
+                                    app.notes.push(note);
+                                    break;
+                                }
+                            }
+
+                            use std::fs;
+                            fs::remove_file("/tmp/note_rs.tmp")?;
+                        }
+
+                        // let mut stdout = io::stdout();
+                        // execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+
+                        terminal.clear()?;
                     }
                     KeyCode::Char('j') => {
                         app.current_selection = match app.current_selection {
@@ -160,7 +191,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                         app.input_index += 1;
                     }
                     KeyCode::Enter => {
-                        app.notes.push(app.input.drain(..).collect());
+                        let note: String = app.input.drain(..).collect();
+                        if note.len() != 0 {
+                            app.notes.push(note);
+                        }
                         app.input.clear();
                         app.mode = InputMode::Normal;
                         app.input_index = 0;

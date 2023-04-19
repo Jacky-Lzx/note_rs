@@ -23,6 +23,7 @@ struct App {
     notes: Vec<String>,
     mode: InputMode,
     input: String,
+    input_index: usize,
     current_selection: Option<i32>,
 }
 enum InputMode {
@@ -32,10 +33,11 @@ enum InputMode {
 
 impl Default for App {
     fn default() -> App {
-        let notes_file: Vec<String> = read_from_file();
         // Read from file
+        let notes_file: Vec<String> = read_from_file();
         App {
             input: String::new(),
+            input_index: 0,
             notes: notes_file,
             mode: InputMode::Normal,
             current_selection: Some(0),
@@ -144,17 +146,32 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     KeyCode::Esc => {
                         app.mode = InputMode::Normal;
                     }
+                    KeyCode::Left => {
+                        app.input_index -= 1;
+                        app.input_index = std::cmp::max(0, app.input_index);
+                    }
+                    KeyCode::Right => {
+                        app.input_index += 1;
+                        app.input_index = std::cmp::min(app.input.len(), app.input_index);
+                    }
                     // KeyCode::Char('a') => app.notes.push(String::from("abc")),
                     KeyCode::Char(c) => {
-                        app.input.push(c);
+                        app.input.insert(app.input_index, c);
+                        app.input_index += 1;
                     }
                     KeyCode::Enter => {
                         app.notes.push(app.input.drain(..).collect());
                         app.input.clear();
                         app.mode = InputMode::Normal;
+                        app.input_index = 0;
                     }
                     KeyCode::Backspace => {
-                        app.input.pop();
+                        // app.input.pop();
+                        if app.input_index > 0 {
+                            app.input.remove(app.input_index - 1);
+                            app.input_index -= 1;
+                            app.input_index = std::cmp::max(0, app.input_index);
+                        }
                     }
                     _ => {}
                 },
@@ -209,7 +226,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
             // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
             f.set_cursor(
                 // Put cursor past the end of the input text
-                chunks[0].x + app.input.width() as u16 + 1,
+                // chunks[0].x + app.input.width() as u16 + 1,
+                chunks[0].x + app.input_index as u16 + 1,
                 // Move one line down, from the border to the input line
                 chunks[0].y + 1,
             )

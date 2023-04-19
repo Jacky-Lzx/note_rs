@@ -1,9 +1,5 @@
 csles
-slfrjes
-    // Open the file in read-only mode.
-    let file = File::open(filename).unwrap(); 
-    // Read the file line by line, and return an iterator of the lines of the file.
-jjj
-jj
 csjlfjes
 lsfjsea
+jlej
+jfes;lfj

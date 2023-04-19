@@ -23,6 +23,7 @@ struct App {
     notes: Vec<String>,
     mode: InputMode,
     input: String,
+    current_selection: Option<i32>,
 }
 enum InputMode {
     Normal,
@@ -37,6 +38,7 @@ impl Default for App {
             input: String::new(),
             notes: notes_file,
             mode: InputMode::Normal,
+            current_selection: Some(0),
         }
     }
 }
@@ -114,7 +116,28 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                         write_to_file(app.notes);
                         return Ok(());
                     }
-                    KeyCode::Char('a') => app.mode = InputMode::Editing,
+                    KeyCode::Char('j') => {
+                        app.current_selection = match app.current_selection {
+                            None => None,
+                            Some(i) => Some(std::cmp::min(app.notes.len() as i32 - 1, i + 1)),
+                        };
+                    }
+                    KeyCode::Char('k') => {
+                        app.current_selection = match app.current_selection {
+                            None => None,
+                            Some(i) => Some(std::cmp::max(0, i - 1)),
+                        };
+                    }
+                    KeyCode::Char('d') => match app.current_selection {
+                        None => {}
+                        Some(index) => {
+                            app.notes.remove(index as usize);
+                        }
+                    },
+
+                    KeyCode::Char('a') => {
+                        app.mode = InputMode::Editing;
+                    }
                     _ => {}
                 },
                 InputMode::Editing => match key.code {
@@ -128,6 +151,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     KeyCode::Enter => {
                         app.notes.push(app.input.drain(..).collect());
                         app.input.clear();
+                        app.mode = InputMode::Normal;
                     }
                     KeyCode::Backspace => {
                         app.input.pop();
@@ -148,9 +172,19 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
 
     let mut texts: Vec<Spans> = Vec::new();
 
-    let mut index = 0;
+    let mut index: i32 = 0;
     for note in &app.notes {
-        texts.push(Spans::from(format!("{index}: {note}")));
+        if index
+            == match app.current_selection {
+                None => -1,
+                Some(value) => value,
+            }
+        {
+            let style = Style::default().bg(Color::Gray);
+            texts.push(Spans::from(Span::styled(format!("{index}: {note}"), style)));
+        } else {
+            texts.push(Spans::from(format!("{index}: {note}")));
+        }
         index += 1;
     }
 

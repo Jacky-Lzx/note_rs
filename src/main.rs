@@ -248,6 +248,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                         None => {}
                         Some(index) => {
                             app.notes.remove(index as usize);
+                            app.current_selection = Some(std::cmp::max(index - 1, 0));
                         }
                     },
 

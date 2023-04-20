@@ -319,16 +319,28 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                 Some(value) => value,
             }
         {
-            let style = Style::default().bg(Color::Gray);
-            texts.push(Spans::from(Span::styled(
-                format!("{}: {} - {:?}", index, note.tag, note.command),
-                style,
-            )));
+            let style = Style::default().fg(Color::LightBlue).bg(Color::Gray);
+            let hl_style = Style::default().bg(Color::Gray);
+            texts.push(Spans::from(vec![
+                Span::styled(format!("{}", index), hl_style),
+                Span::styled(": ", hl_style),
+                Span::styled(format!("{}", note.tag), style),
+                Span::styled(" - ", hl_style),
+                Span::styled(format!("{:?}", note.command), hl_style),
+            ]));
         } else {
-            texts.push(Spans::from(format!(
-                "{}: {} - {:?}",
-                index, note.tag, note.command
-            )));
+            let style = Style::default().fg(Color::LightBlue);
+            texts.push(Spans::from(vec![
+                Span::raw(format!("{}", index)),
+                Span::raw(": "),
+                Span::styled(format!("{}", note.tag), style),
+                Span::raw(" - "),
+                Span::raw(format!("{:?}", note.command)),
+            ]));
+            // texts.push(Spans::from(format!(
+            //     "{}: {} - {:?}",
+            //     index, note.tag, note.command
+            // )));
         }
         index += 1;
     }

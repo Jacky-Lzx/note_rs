@@ -28,5 +28,23 @@
     "command": [
       "g"
     ]
+  },
+  {
+    "tag": "",
+    "command": [
+      "h"
+    ]
+  },
+  {
+    "tag": "",
+    "command": [
+      "i"
+    ]
+  },
+  {
+    "tag": "j",
+    "command": [
+      "j"
+    ]
   }
 ]

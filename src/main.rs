@@ -20,11 +20,20 @@ use std::path::Path;
 
 /// App holds the state of the application
 struct App {
-    notes: Vec<String>,
+    notes: Vec<Note>,
     mode: InputMode,
     input: String,
     input_index: usize,
     current_selection: Option<i32>,
+}
+
+use serde::{de::value, Deserialize, Serialize};
+// use serde_json::Result;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Note {
+    tag: String,
+    command: Vec<String>,
 }
 enum InputMode {
     Normal,
@@ -34,13 +43,31 @@ enum InputMode {
 impl Default for App {
     fn default() -> App {
         // Read from file
-        let notes_file: Vec<String> = read_from_file();
+        let notes_file: Vec<Note> = read_from_file_json();
+        read_from_file_json();
         App {
             input: String::new(),
             input_index: 0,
             notes: notes_file,
             mode: InputMode::Normal,
             current_selection: Some(0),
+        }
+    }
+}
+
+impl Note {
+    fn new(str_new: String) -> Note {
+        let parts: Vec<&str> = str_new.split(":").collect();
+        if parts.len() == 1 {
+            return Note {
+                tag: String::from(""),
+                command: vec![String::from(parts[0].trim())],
+            };
+        } else {
+            return Note {
+                tag: String::from(parts[0]),
+                command: vec![String::from(parts[1].trim())],
+            };
         }
     }
 }
@@ -87,7 +114,58 @@ fn read_from_file() -> Vec<String> {
     return notes;
 }
 
-fn write_to_file(notes: Vec<String>) {
+fn read_from_file_json() -> Vec<Note> {
+    // let mut notes: Vec<String> = Vec::new();
+    // Open the file in read-only mode.
+    let file = File::open("notes.json").unwrap();
+    // Read the file line by line, and return an iterator of the lines of the file.
+    // let lines = io::BufReader::new(&file).lines();
+    // for line in lines {
+    //     if let Ok(note) = line {
+    //         notes.push(note);
+    //     }
+    // }
+
+    let p: Vec<Note> = serde_json::from_reader(io::BufReader::new(&file)).unwrap();
+
+    // println!("{:?}", p);
+    return p;
+}
+fn write_to_file_json(notes: &Vec<Note>) {
+    // let mut notes_j: Vec<Note> = Vec::new();
+    // for note in notes {
+    //     let note_j = Note {
+    //         tag: String::from(""),
+    //         command: vec![note.clone()],
+    //     };
+    //
+    //     notes_j.push(note_j);
+    // }
+    let notes_j = notes;
+    let j = match serde_json::to_string_pretty(&notes_j) {
+        Ok(j) => j,
+        Err(why) => panic!("couldn't get json: {}", why),
+    };
+
+    let path = Path::new("notes.json");
+    let display = path.display();
+
+    // Open a file in write-only mode, returns `io::Result<File>`
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("couldn't create {}: {}", display, why),
+        Ok(file) => file,
+    };
+
+    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
+    match file.write_all(j.as_bytes()) {
+        Err(why) => panic!("couldn't write to {}: {}", display, why),
+        Ok(_) => {
+            // println!("successfully wrote to {}", display),
+        }
+    }
+}
+
+fn write_to_file(notes: &Vec<String>) {
     let path = Path::new("notes.txt");
     let display = path.display();
 
@@ -98,7 +176,7 @@ fn write_to_file(notes: Vec<String>) {
     };
 
     // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
-    for note in &notes {
+    for note in notes {
         let note_write = String::from(note) + "\n";
         match file.write_all(note_write.as_bytes()) {
             Err(why) => panic!("couldn't write to {}: {}", display, why),
@@ -117,7 +195,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
             match app.mode {
                 InputMode::Normal => match key.code {
                     KeyCode::Char('q') => {
-                        write_to_file(app.notes);
+                        // write_to_file(&app.notes);
+                        write_to_file_json(&app.notes);
                         return Ok(());
                     }
                     KeyCode::Char('e') => {
@@ -135,7 +214,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                             let lines = io::BufReader::new(file).lines();
                             for line in lines {
                                 if let Ok(note) = line {
-                                    app.notes.push(note);
+                                    // app.notes.push(Note {
+                                    //     tag: String::from(""),
+                                    //     command: vec![note],
+                                    // });
+                                    app.notes.push(Note::new(note));
                                     break;
                                 }
                             }
@@ -193,7 +276,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     KeyCode::Enter => {
                         let note: String = app.input.drain(..).collect();
                         if note.len() != 0 {
-                            app.notes.push(note);
+                            // app.notes.push(Note {
+                            //     tag: String::from(""),
+                            //     command: vec![note],
+                            // });
+                            app.notes.push(Note::new(note));
                         }
                         app.input.clear();
                         app.mode = InputMode::Normal;
@@ -232,9 +319,15 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
             }
         {
             let style = Style::default().bg(Color::Gray);
-            texts.push(Spans::from(Span::styled(format!("{index}: {note}"), style)));
+            texts.push(Spans::from(Span::styled(
+                format!("{}: {} - {:?}", index, note.tag, note.command),
+                style,
+            )));
         } else {
-            texts.push(Spans::from(format!("{index}: {note}")));
+            texts.push(Spans::from(format!(
+                "{}: {} - {:?}",
+                index, note.tag, note.command
+            )));
         }
         index += 1;
     }

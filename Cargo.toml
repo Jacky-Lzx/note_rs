@@ -14,3 +14,6 @@ unicode-width = "0.1"
 # termion = { version = "1.5", optional = true }
 crossterm = { version = "0.25", optional = false }
 # serde = { version = "1", optional = true, features = ["derive"]}
+
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }

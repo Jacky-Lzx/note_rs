@@ -262,14 +262,23 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                             Some(i) => Some(std::cmp::max(0, i - 1)),
                         };
                     }
-                    KeyCode::Char('d') => match app.current_selection {
-                        None => {}
-                        Some(index) => {
-                            app.notes.remove(index as usize);
-                            app.current_selection =
-                                Some(std::cmp::min(index, app.notes.len() as i32 - 1));
+                    KeyCode::Char('d') => {
+                        // Double check to delete
+                        if let Event::Key(key2) = event::read()? {
+                            match key2.code {
+                                KeyCode::Char('d') => match app.current_selection {
+                                    None => {}
+                                    Some(index) => {
+                                        app.notes.remove(index as usize);
+                                        app.current_selection =
+                                            Some(std::cmp::min(index, app.notes.len() as i32 - 1));
+                                    }
+                                },
+                                KeyCode::Esc => {}
+                                _ => {}
+                            }
                         }
-                    },
+                    }
 
                     KeyCode::Char('a') => {
                         app.mode = AppMode::Editing;

@@ -319,8 +319,11 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                 Some(value) => value,
             }
         {
-            let style = Style::default().fg(Color::LightBlue).bg(Color::Gray);
-            let hl_style = Style::default().bg(Color::Gray);
+            let style = Style::default()
+                .fg(Color::LightBlue)
+                .add_modifier(Modifier::BOLD);
+            let hl_style = Style::default().add_modifier(Modifier::BOLD);
+            // let hl_style = Style::default().bg(Color::Gray);
             texts.push(Spans::from(vec![
                 Span::styled(format!("{}", index), hl_style),
                 Span::styled(": ", hl_style),

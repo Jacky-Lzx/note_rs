@@ -4,5 +4,11 @@
     "command": [
       "gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=out.pdf a.pdf b.pdf"
     ]
+  },
+  {
+    "tag": "",
+    "command": [
+      "a"
+    ]
   }
 ]

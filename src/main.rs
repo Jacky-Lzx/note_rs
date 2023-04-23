@@ -88,6 +88,18 @@ impl Note {
     //     return Note {}
     //
     // }
+    fn format<'a>(&self, index: i32, extra_style: Style) -> Spans<'a> {
+        // let tag_style = base_style.add
+        let tag_style = Style::default().fg(Color::LightBlue).patch(extra_style);
+        let ret = Spans::from(vec![
+            Span::styled(format!("{}", index), extra_style),
+            Span::styled(": ", extra_style),
+            Span::styled(format!("{}", self.tag), tag_style),
+            Span::styled(" - ", extra_style),
+            Span::styled(format!("{:?}", self.command), extra_style),
+        ]);
+        return ret;
+    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -437,31 +449,10 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                 Some(value) => value,
             }
         {
-            let style = Style::default()
-                .fg(Color::LightBlue)
-                .add_modifier(Modifier::BOLD);
             let hl_style = Style::default().add_modifier(Modifier::BOLD);
-            // let hl_style = Style::default().bg(Color::Gray);
-            texts.push(Spans::from(vec![
-                Span::styled(format!("{}", index), hl_style),
-                Span::styled(": ", hl_style),
-                Span::styled(format!("{}", note.tag), style),
-                Span::styled(" - ", hl_style),
-                Span::styled(format!("{:?}", note.command), hl_style),
-            ]));
+            texts.push(note.format(index, hl_style));
         } else {
-            let style = Style::default().fg(Color::LightBlue);
-            texts.push(Spans::from(vec![
-                Span::raw(format!("{}", index)),
-                Span::raw(": "),
-                Span::styled(format!("{}", note.tag), style),
-                Span::raw(" - "),
-                Span::raw(format!("{:?}", note.command)),
-            ]));
-            // texts.push(Spans::from(format!(
-            //     "{}: {} - {:?}",
-            //     index, note.tag, note.command
-            // )));
+            texts.push(note.format(index, Style::default()));
         }
         index += 1;
     }
@@ -491,28 +482,37 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                 .margin(2)
                 .constraints([Constraint::Length(3), Constraint::Min(1)].as_ref())
                 .split(area);
-            let mut tag_box = Paragraph::new(app.note.tag.as_ref())
-                .block(Block::default().title("Tag").borders(Borders::ALL));
+            // let mut tag_block = Block::default().title("Tag").borders(Borders::ALL);
+            let mut tag_text: &str = app.note.tag.as_ref();
+            let focus_style = Style::default();
+            let mut tag_style = Style::default().fg(Color::Yellow);
             if app.edit_focus == 0 {
                 if app.edit_mode == EditMode::TagInput {
-                    tag_box = Paragraph::new(app.input.as_ref())
-                        .block(Block::default().title("Tag").borders(Borders::ALL));
+                    tag_text = app.input.as_ref();
                 }
-                tag_box = tag_box.style(Style::default().fg(Color::Yellow));
+                tag_style = tag_style.patch(focus_style);
             }
-            let mut test_message = Paragraph::new(app.note.command[0].as_ref())
-                .block(Block::default().title("Input").borders(Borders::ALL));
+            let tag_box = Paragraph::new(tag_text)
+                .block(Block::default().title("Tag").borders(Borders::ALL))
+                .style(tag_style);
+
+            let mut note_text: &str = app.note.command[0].as_ref();
+            let mut note_style = Style::default();
+
             if app.edit_focus == 1 {
                 if app.edit_mode == EditMode::NoteInput {
-                    test_message = Paragraph::new(app.input.as_ref())
-                        .block(Block::default().title("Input").borders(Borders::ALL));
+                    note_text = app.input.as_ref();
                 }
-                test_message = test_message.style(Style::default().fg(Color::Yellow));
+                note_style = note_style.patch(focus_style);
             }
+
+            let note_box = Paragraph::new(note_text)
+                .block(Block::default().title("Command").borders(Borders::ALL))
+                .style(note_style);
 
             f.render_widget(Clear, area); //this clears out the background
             f.render_widget(tag_box, input_chunks[0]);
-            f.render_widget(test_message, input_chunks[1]);
+            f.render_widget(note_box, input_chunks[1]);
 
             // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
             match app.edit_mode {

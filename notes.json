@@ -14,19 +14,7 @@
   {
     "tag": "",
     "command": [
-      "d"
-    ]
-  },
-  {
-    "tag": "",
-    "command": [
       "e"
-    ]
-  },
-  {
-    "tag": "",
-    "command": [
-      "g"
     ]
   },
   {
@@ -38,13 +26,49 @@
   {
     "tag": "",
     "command": [
-      "i"
+      "slfjs"
     ]
   },
   {
-    "tag": "j",
+    "tag": "",
     "command": [
-      "j"
+      "abclsfes"
+    ]
+  },
+  {
+    "tag": "a",
+    "command": [
+      "b"
+    ]
+  },
+  {
+    "tag": "a",
+    "command": [
+      "b"
+    ]
+  },
+  {
+    "tag": "a",
+    "command": [
+      "b"
+    ]
+  },
+  {
+    "tag": "a",
+    "command": [
+      "b"
+    ]
+  },
+  {
+    "tag": "a",
+    "command": [
+      "b"
+    ]
+  },
+  {
+    "tag": "a",
+    "command": [
+      "b"
     ]
   }
 ]

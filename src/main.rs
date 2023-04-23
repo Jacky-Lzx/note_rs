@@ -6,10 +6,10 @@ use crossterm::{
 use std::{error::Error, io};
 use tui::{
     backend::{Backend, CrosstermBackend},
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame, Terminal,
 };
 use unicode_width::UnicodeWidthStr;
@@ -21,10 +21,13 @@ use std::path::Path;
 /// App holds the state of the application
 struct App {
     notes: Vec<Note>,
-    mode: InputMode,
+    mode: AppMode,
+    edit_mode: EditMode,
     input: String,
     input_index: usize,
     current_selection: Option<i32>,
+    edit_focus: usize,
+    note: Note,
 }
 
 use serde::{de::value, Deserialize, Serialize};
@@ -35,9 +38,16 @@ struct Note {
     tag: String,
     command: Vec<String>,
 }
-enum InputMode {
-    Normal,
+#[derive(PartialEq)]
+enum AppMode {
+    View,
     Editing,
+}
+#[derive(PartialEq)]
+enum EditMode {
+    Direct,
+    TagInput,
+    NoteInput,
 }
 
 impl Default for App {
@@ -49,7 +59,11 @@ impl Default for App {
             input: String::new(),
             input_index: 0,
             notes: notes_file,
-            mode: InputMode::Normal,
+            mode: AppMode::View,
+            edit_mode: EditMode::Direct,
+            edit_focus: 0,
+            note: Note::new(String::from("")),
+
             current_selection: Some(0),
         }
     }
@@ -70,6 +84,10 @@ impl Note {
             };
         }
     }
+    // fn new(tag: String, command: Vec<String>) -> Note {
+    //     return Note {}
+    //
+    // }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -193,7 +211,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 
         if let Event::Key(key) = event::read()? {
             match app.mode {
-                InputMode::Normal => match key.code {
+                AppMode::View => match key.code {
                     KeyCode::Char('q') => {
                         // write_to_file(&app.notes);
                         write_to_file_json(&app.notes);
@@ -248,54 +266,138 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                         None => {}
                         Some(index) => {
                             app.notes.remove(index as usize);
-                            app.current_selection = Some(std::cmp::max(index - 1, 0));
+                            app.current_selection =
+                                Some(std::cmp::min(index, app.notes.len() as i32 - 1));
                         }
                     },
 
                     KeyCode::Char('a') => {
-                        app.mode = InputMode::Editing;
+                        app.mode = AppMode::Editing;
+                        app.edit_mode = EditMode::Direct;
                     }
                     _ => {}
                 },
-                InputMode::Editing => match key.code {
-                    KeyCode::Esc => {
-                        app.mode = InputMode::Normal;
-                    }
-                    KeyCode::Left => {
-                        app.input_index -= 1;
-                        app.input_index = std::cmp::max(0, app.input_index);
-                    }
-                    KeyCode::Right => {
-                        app.input_index += 1;
-                        app.input_index = std::cmp::min(app.input.len(), app.input_index);
-                    }
-                    // KeyCode::Char('a') => app.notes.push(String::from("abc")),
-                    KeyCode::Char(c) => {
-                        app.input.insert(app.input_index, c);
-                        app.input_index += 1;
-                    }
-                    KeyCode::Enter => {
-                        let note: String = app.input.drain(..).collect();
-                        if note.len() != 0 {
-                            // app.notes.push(Note {
-                            //     tag: String::from(""),
-                            //     command: vec![note],
-                            // });
-                            app.notes.push(Note::new(note));
+                AppMode::Editing => match app.edit_mode {
+                    EditMode::NoteInput => {
+                        match key.code {
+                            KeyCode::Esc => {
+                                // app.mode = AppMode::Editing;
+                                app.edit_mode = EditMode::Direct;
+                            }
+                            KeyCode::Left => {
+                                app.input_index -= 1;
+                                app.input_index = std::cmp::max(0, app.input_index);
+                            }
+                            KeyCode::Right => {
+                                app.input_index += 1;
+                                app.input_index = std::cmp::min(app.input.len(), app.input_index);
+                            }
+                            // KeyCode::Char('a') => app.notes.push(String::from("abc")),
+                            KeyCode::Char(c) => {
+                                app.input.insert(app.input_index, c);
+                                app.input_index += 1;
+                            }
+                            KeyCode::Enter => {
+                                let note: String = app.input.drain(..).collect();
+                                if note.len() != 0 {
+                                    // app.notes.push(Note {
+                                    //     tag: String::from(""),
+                                    //     command: vec![note],
+                                    // });
+                                    // app.notes.push(Note::new(note));
+                                    app.note.command = vec![note];
+                                }
+                                app.input.clear();
+                                // app.mode = AppMode::View;
+                                app.edit_mode = EditMode::Direct;
+                                app.input_index = 0;
+                            }
+                            KeyCode::Backspace => {
+                                // app.input.pop();
+                                if app.input_index > 0 {
+                                    app.input.remove(app.input_index - 1);
+                                    app.input_index -= 1;
+                                    app.input_index = std::cmp::max(0, app.input_index);
+                                }
+                            }
+                            _ => {}
                         }
-                        app.input.clear();
-                        app.mode = InputMode::Normal;
-                        app.input_index = 0;
                     }
-                    KeyCode::Backspace => {
-                        // app.input.pop();
-                        if app.input_index > 0 {
-                            app.input.remove(app.input_index - 1);
+                    EditMode::Direct => match key.code {
+                        KeyCode::Esc => {
+                            app.mode = AppMode::View;
+                        }
+                        KeyCode::Char('j') => {
+                            // app.edit_focus += 1;
+                            app.edit_focus = std::cmp::min(1, app.edit_focus + 1);
+                        }
+                        KeyCode::Char('k') => {
+                            if app.edit_focus != 0 {
+                                app.edit_focus = std::cmp::max(0, app.edit_focus - 1);
+                            }
+                        }
+                        KeyCode::Char('i') => {
+                            if app.edit_focus == 0 {
+                                app.edit_mode = EditMode::TagInput;
+                                app.input = String::from(&app.note.tag);
+                                app.input_index = app.input.len();
+                            } else if app.edit_focus == 1 {
+                                app.edit_mode = EditMode::NoteInput;
+                                app.input = String::from(&app.note.command[0]);
+                                app.input_index = app.input.len();
+                            }
+                        }
+                        KeyCode::Enter => {
+                            app.notes.push(Note {
+                                tag: String::from(&app.note.tag),
+                                command: vec![String::from(&app.note.command[0])],
+                            });
+                        }
+                        _ => {}
+                    },
+                    EditMode::TagInput => match key.code {
+                        KeyCode::Esc => {
+                            // app.mode = AppMode::Editing;
+                            app.edit_mode = EditMode::Direct;
+                        }
+                        KeyCode::Left => {
                             app.input_index -= 1;
                             app.input_index = std::cmp::max(0, app.input_index);
                         }
-                    }
-                    _ => {}
+                        KeyCode::Right => {
+                            app.input_index += 1;
+                            app.input_index = std::cmp::min(app.input.len(), app.input_index);
+                        }
+                        // KeyCode::Char('a') => app.notes.push(String::from("abc")),
+                        KeyCode::Char(c) => {
+                            app.input.insert(app.input_index, c);
+                            app.input_index += 1;
+                        }
+                        KeyCode::Enter => {
+                            let note: String = app.input.drain(..).collect();
+                            if note.len() != 0 {
+                                // app.notes.push(Note {
+                                //     tag: String::from(""),
+                                //     command: vec![note],
+                                // });
+                                // app.notes.push(Note::new(note));
+                                app.note.tag = note;
+                            }
+                            app.input.clear();
+                            // app.mode = AppMode::View;
+                            app.edit_mode = EditMode::Direct;
+                            app.input_index = 0;
+                        }
+                        KeyCode::Backspace => {
+                            // app.input.pop();
+                            if app.input_index > 0 {
+                                app.input.remove(app.input_index - 1);
+                                app.input_index -= 1;
+                                app.input_index = std::cmp::max(0, app.input_index);
+                            }
+                        }
+                        _ => {}
+                    },
                 },
             }
         }
@@ -306,7 +408,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
-        .constraints([Constraint::Length(3), Constraint::Min(1)].as_ref())
+        // .constraints([Constraint::Length(3), Constraint::Min(1)].as_ref())
+        .constraints([Constraint::Min(1)].as_ref())
         .split(f.size());
 
     let mut texts: Vec<Spans> = Vec::new();
@@ -348,32 +451,97 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         index += 1;
     }
 
-    let input_area = Paragraph::new(app.input.as_ref())
-        .style(match app.mode {
-            InputMode::Normal => Style::default(),
-            InputMode::Editing => Style::default().fg(Color::Yellow),
-        })
-        .block(Block::default().borders(Borders::ALL).title("Input"));
-    f.render_widget(input_area, chunks[0]);
+    // let input_area = Paragraph::new(app.input.as_ref())
+    //     .style(match app.mode {
+    //         AppMode::View => Style::default(),
+    //         AppMode::Editing => Style::default().fg(Color::Yellow),
+    //     })
+    //     .block(Block::default().borders(Borders::ALL).title("Input"));
+    // f.render_widget(input_area, chunks[0]);
 
     let help_message =
         Paragraph::new(texts).block(Block::default().borders(Borders::ALL).title("Notes"));
-    f.render_widget(help_message, chunks[1]);
+    f.render_widget(help_message, chunks[0]);
 
     match app.mode {
-        InputMode::Normal =>
+        AppMode::View =>
             // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
             {}
 
-        InputMode::Editing => {
+        AppMode::Editing => {
+            // let block = Block::default().title("Input").borders(Borders::ALL);
+            let area = centered_rect(60, 40, f.size());
+            let input_chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(2)
+                .constraints([Constraint::Length(3), Constraint::Min(1)].as_ref())
+                .split(area);
+            let mut tag_box = Paragraph::new(app.note.tag.as_ref())
+                .block(Block::default().title("Tag").borders(Borders::ALL));
+            if app.edit_focus == 0 {
+                if app.edit_mode == EditMode::TagInput {
+                    tag_box = Paragraph::new(app.input.as_ref())
+                        .block(Block::default().title("Tag").borders(Borders::ALL));
+                }
+                tag_box = tag_box.style(Style::default().fg(Color::Yellow));
+            }
+            let mut test_message = Paragraph::new(app.note.command[0].as_ref())
+                .block(Block::default().title("Input").borders(Borders::ALL));
+            if app.edit_focus == 1 {
+                if app.edit_mode == EditMode::NoteInput {
+                    test_message = Paragraph::new(app.input.as_ref())
+                        .block(Block::default().title("Input").borders(Borders::ALL));
+                }
+                test_message = test_message.style(Style::default().fg(Color::Yellow));
+            }
+
+            f.render_widget(Clear, area); //this clears out the background
+            f.render_widget(tag_box, input_chunks[0]);
+            f.render_widget(test_message, input_chunks[1]);
+
             // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-            f.set_cursor(
-                // Put cursor past the end of the input text
-                // chunks[0].x + app.input.width() as u16 + 1,
-                chunks[0].x + app.input_index as u16 + 1,
-                // Move one line down, from the border to the input line
-                chunks[0].y + 1,
-            )
+            match app.edit_mode {
+                EditMode::Direct => {}
+                _ => {
+                    f.set_cursor(
+                        input_chunks[app.edit_focus].x + app.input_index as u16 + 1,
+                        // Move one line down, from the border to the input line
+                        input_chunks[app.edit_focus].y + 1,
+                    )
+                }
+            }
         }
     }
+
+    match app.mode {
+        AppMode::Editing => {}
+        _ => {}
+    }
+}
+
+/// helper function to create a centered rect using up certain percentage of the available rect `r`
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(popup_layout[1])[1]
 }

@@ -352,6 +352,12 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                                 tag: String::from(&app.note.tag),
                                 command: vec![String::from(&app.note.command[0])],
                             });
+                            app.note = Note {
+                                tag: String::from(""),
+                                command: vec![String::from("")],
+                            };
+                            app.edit_mode = EditMode::Direct;
+                            app.mode = AppMode::View;
                         }
                         _ => {}
                     },

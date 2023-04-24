@@ -484,13 +484,16 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                 .split(area);
             // let mut tag_block = Block::default().title("Tag").borders(Borders::ALL);
             let mut tag_text: &str = app.note.tag.as_ref();
-            let focus_style = Style::default();
-            let mut tag_style = Style::default().fg(Color::Yellow);
+            let focus_style = Style::default().fg(Color::Yellow);
+            let editing_style = Style::default().fg(Color::Cyan);
+            let mut tag_style = Style::default();
             if app.edit_focus == 0 {
                 if app.edit_mode == EditMode::TagInput {
                     tag_text = app.input.as_ref();
+                    tag_style = tag_style.patch(editing_style);
+                } else {
+                    tag_style = tag_style.patch(focus_style);
                 }
-                tag_style = tag_style.patch(focus_style);
             }
             let tag_box = Paragraph::new(tag_text)
                 .block(Block::default().title("Tag").borders(Borders::ALL))
@@ -502,8 +505,10 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
             if app.edit_focus == 1 {
                 if app.edit_mode == EditMode::NoteInput {
                     note_text = app.input.as_ref();
+                    note_style = note_style.patch(editing_style);
+                } else {
+                    note_style = note_style.patch(focus_style);
                 }
-                note_style = note_style.patch(focus_style);
             }
 
             let note_box = Paragraph::new(note_text)

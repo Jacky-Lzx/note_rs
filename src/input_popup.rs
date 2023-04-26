@@ -1,3 +1,4 @@
+use crossterm::event::{KeyCode, KeyEvent};
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
@@ -6,11 +7,141 @@ use tui::{
     Frame,
 };
 
-use crate::{App, EditMode, Note};
+use crate::{App, AppMode, EditMode, Note};
 
 pub struct InputPopup {}
 
 impl InputPopup {
+    pub fn key_event(app: &mut App, key: &KeyEvent) {
+        match app.edit_mode {
+            EditMode::NoteInput => {
+                match key.code {
+                    KeyCode::Esc => {
+                        // app.mode = AppMode::Editing;
+                        app.edit_mode = EditMode::Direct;
+                    }
+                    KeyCode::Left => {
+                        app.input_index -= 1;
+                        app.input_index = std::cmp::max(0, app.input_index);
+                    }
+                    KeyCode::Right => {
+                        app.input_index += 1;
+                        app.input_index = std::cmp::min(app.input.len(), app.input_index);
+                    }
+                    // KeyCode::Char('a') => app.notes.push(String::from("abc")),
+                    KeyCode::Char(c) => {
+                        app.input.insert(app.input_index, c);
+                        app.input_index += 1;
+                    }
+                    KeyCode::Enter => {
+                        let note: String = app.input.drain(..).collect();
+                        if note.len() != 0 {
+                            // app.notes.push(Note {
+                            //     tag: String::from(""),
+                            //     command: vec![note],
+                            // });
+                            // app.notes.push(Note::new(note));
+                            app.note.command = vec![note];
+                        }
+                        app.input.clear();
+                        // app.mode = AppMode::View;
+                        app.edit_mode = EditMode::Direct;
+                        app.input_index = 0;
+                    }
+                    KeyCode::Backspace => {
+                        // app.input.pop();
+                        if app.input_index > 0 {
+                            app.input.remove(app.input_index - 1);
+                            app.input_index -= 1;
+                            app.input_index = std::cmp::max(0, app.input_index);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            EditMode::Direct => match key.code {
+                KeyCode::Esc => {
+                    app.mode = AppMode::View;
+                }
+                KeyCode::Char('j') => {
+                    // app.edit_focus += 1;
+                    app.edit_focus = std::cmp::min(1, app.edit_focus + 1);
+                }
+                KeyCode::Char('k') => {
+                    if app.edit_focus != 0 {
+                        app.edit_focus = std::cmp::max(0, app.edit_focus - 1);
+                    }
+                }
+                KeyCode::Char('i') => {
+                    if app.edit_focus == 0 {
+                        app.edit_mode = EditMode::TagInput;
+                        app.input = String::from(&app.note.tag);
+                        app.input_index = app.input.len();
+                    } else if app.edit_focus == 1 {
+                        app.edit_mode = EditMode::NoteInput;
+                        app.input = String::from(&app.note.command[0]);
+                        app.input_index = app.input.len();
+                    }
+                }
+                KeyCode::Enter => {
+                    app.notes.push(Note {
+                        tag: String::from(&app.note.tag),
+                        command: vec![String::from(&app.note.command[0])],
+                    });
+                    app.note = Note {
+                        tag: String::from(""),
+                        command: vec![String::from("")],
+                    };
+                    app.edit_mode = EditMode::Direct;
+                    app.mode = AppMode::View;
+                }
+                _ => {}
+            },
+            EditMode::TagInput => match key.code {
+                KeyCode::Esc => {
+                    // app.mode = AppMode::Editing;
+                    app.edit_mode = EditMode::Direct;
+                }
+                KeyCode::Left => {
+                    app.input_index -= 1;
+                    app.input_index = std::cmp::max(0, app.input_index);
+                }
+                KeyCode::Right => {
+                    app.input_index += 1;
+                    app.input_index = std::cmp::min(app.input.len(), app.input_index);
+                }
+                // KeyCode::Char('a') => app.notes.push(String::from("abc")),
+                KeyCode::Char(c) => {
+                    app.input.insert(app.input_index, c);
+                    app.input_index += 1;
+                }
+                KeyCode::Enter => {
+                    let note: String = app.input.drain(..).collect();
+                    if note.len() != 0 {
+                        // app.notes.push(Note {
+                        //     tag: String::from(""),
+                        //     command: vec![note],
+                        // });
+                        // app.notes.push(Note::new(note));
+                        app.note.tag = note;
+                    }
+                    app.input.clear();
+                    // app.mode = AppMode::View;
+                    app.edit_mode = EditMode::Direct;
+                    app.input_index = 0;
+                }
+                KeyCode::Backspace => {
+                    // app.input.pop();
+                    if app.input_index > 0 {
+                        app.input.remove(app.input_index - 1);
+                        app.input_index -= 1;
+                        app.input_index = std::cmp::max(0, app.input_index);
+                    }
+                }
+                _ => {}
+            },
+        }
+    }
     pub fn render<B: Backend>(f: &mut Frame<B>, area: &Rect, app: &App) {
         let input_chunks = Layout::default()
             .direction(Direction::Vertical)

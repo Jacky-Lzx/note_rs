@@ -1,4 +1,6 @@
-pub mod input_popup;
+// pub mod input_popup;
+mod note;
+mod parser;
 mod utils;
 
 use crossterm::{
@@ -6,8 +8,8 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use input_popup::InputPopup;
-use std::{error::Error, io};
+// use input_popup::InputPopup;
+use std::{error::Error, io, ptr::null};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout},
@@ -17,6 +19,9 @@ use tui::{
     Frame, Terminal,
 };
 use utils::centered_rect;
+
+use note::Note;
+use parser::Parser;
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -34,14 +39,6 @@ pub struct App {
     note: Note,
 }
 
-use serde::{Deserialize, Serialize};
-// use serde_json::Result;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Note {
-    tag: String,
-    command: Vec<String>,
-}
 #[derive(PartialEq)]
 enum AppMode {
     View,
@@ -66,99 +63,87 @@ impl Default for App {
             mode: AppMode::View,
             edit_mode: EditMode::Direct,
             edit_focus: 0,
-            note: Note::new(String::from("")),
-
+            // note: Note::from(String::from(""), String::from(""), 0),
+            note: Note::new(),
             current_selection: Some(0),
         }
     }
 }
 
-impl Note {
-    fn new(str_new: String) -> Note {
-        let parts: Vec<&str> = str_new.split(":").collect();
-        if parts.len() == 1 {
-            return Note {
-                tag: String::from(""),
-                command: vec![String::from(parts[0].trim())],
-            };
-        } else {
-            return Note {
-                tag: String::from(parts[0]),
-                command: vec![String::from(parts[1].trim())],
-            };
-        }
-    }
-    fn format<'a>(&self, index: i32, extra_style: Style) -> Spans<'a> {
-        // let tag_style = base_style.add
-        let tag_style = Style::default().fg(Color::LightBlue).patch(extra_style);
-        let ret = Spans::from(vec![
-            Span::styled(format!("{}", index), extra_style),
-            Span::styled(": ", extra_style),
-            Span::styled(format!("{}", self.tag), tag_style),
-            Span::styled(" - ", extra_style),
-            Span::styled(format!("{:?}", self.command), extra_style),
-        ]);
-        return ret;
-    }
+fn markdwon_test() {
+    // Read from file "Note.md"
+    let file = File::open("Note.md").unwrap();
+    // Store all lines in file to a vector
+    let lines: Vec<String> = io::BufReader::new(&file)
+        .lines()
+        .map(|l| l.expect("Could not parse line"))
+        .collect();
+
+    Parser::parse(lines);
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     // setup terminal
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
-    // create app and run it
-    let app = App::default();
-    let res = run_app(&mut terminal, app);
-
-    // restore terminal
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
-
-    if let Err(err) = res {
-        println!("{:?}", err)
-    }
+    // enable_raw_mode()?;
+    // let mut stdout = io::stdout();
+    // execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    // let backend = CrosstermBackend::new(stdout);
+    // let mut terminal = Terminal::new(backend)?;
+    //
+    // // create app and run it
+    // let app = App::default();
+    // let res = run_app(&mut terminal, app);
+    //
+    // // restore terminal
+    // disable_raw_mode()?;
+    // execute!(
+    //     terminal.backend_mut(),
+    //     LeaveAlternateScreen,
+    //     DisableMouseCapture
+    // )?;
+    // terminal.show_cursor()?;
+    //
+    // if let Err(err) = res {
+    //     println!("{:?}", err)
+    // }
+    //
+    // Ok(())
+    markdwon_test();
 
     Ok(())
 }
 
 fn read_from_file_json() -> Vec<Note> {
     let file = File::open("notes.json").unwrap();
-    let p: Vec<Note> = serde_json::from_reader(io::BufReader::new(&file)).unwrap();
+    // let p: Vec<Note> = serde_json::from_reader(io::BufReader::new(&file)).unwrap();
+    todo!()
 
-    return p;
+    // return p;
 }
 fn write_to_file_json(notes: &Vec<Note>) {
-    let notes_j = notes;
-    let j = match serde_json::to_string_pretty(&notes_j) {
-        Ok(j) => j,
-        Err(why) => panic!("couldn't get json: {}", why),
-    };
-
-    let path = Path::new("notes.json");
-    let display = path.display();
-
-    // Open a file in write-only mode, returns `io::Result<File>`
-    let mut file = match File::create(&path) {
-        Err(why) => panic!("couldn't create {}: {}", display, why),
-        Ok(file) => file,
-    };
-
-    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
-    match file.write_all(j.as_bytes()) {
-        Err(why) => panic!("couldn't write to {}: {}", display, why),
-        Ok(_) => {
-            // println!("successfully wrote to {}", display),
-        }
-    }
+    todo!()
+    // let notes_j = notes;
+    // let j = match serde_json::to_string_pretty(&notes_j) {
+    //     Ok(j) => j,
+    //     Err(why) => panic!("couldn't get json: {}", why),
+    // };
+    //
+    // let path = Path::new("notes.json");
+    // let display = path.display();
+    //
+    // // Open a file in write-only mode, returns `io::Result<File>`
+    // let mut file = match File::create(&path) {
+    //     Err(why) => panic!("couldn't create {}: {}", display, why),
+    //     Ok(file) => file,
+    // };
+    //
+    // // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
+    // match file.write_all(j.as_bytes()) {
+    //     Err(why) => panic!("couldn't write to {}: {}", display, why),
+    //     Ok(_) => {
+    //         // println!("successfully wrote to {}", display),
+    //     }
+    // }
 }
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
@@ -192,7 +177,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                                     //     tag: String::from(""),
                                     //     command: vec![note],
                                     // });
-                                    app.notes.push(Note::new(note));
+                                    app.notes.push(Note::new());
                                     break;
                                 }
                             }
@@ -243,7 +228,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     _ => {}
                 },
                 AppMode::Editing => {
-                    InputPopup::key_event(&mut app, &key);
+                    // InputPopup::key_event(&mut app, &key);
                 }
             }
         }
@@ -296,7 +281,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         AppMode::Editing => {
             // let block = Block::default().title("Input").borders(Borders::ALL);
             let area = centered_rect(60, 40, f.size());
-            InputPopup::render(f, &area, app);
+            // InputPopup::render(f, &area, app);
         }
     }
 

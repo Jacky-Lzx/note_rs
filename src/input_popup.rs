@@ -41,7 +41,7 @@ impl InputPopup {
                             //     command: vec![note],
                             // });
                             // app.notes.push(Note::new(note));
-                            app.note.command = vec![note];
+                            app.note.content = vec![note];
                         }
                         app.input.clear();
                         // app.mode = AppMode::View;
@@ -79,18 +79,20 @@ impl InputPopup {
                         app.input_index = app.input.len();
                     } else if app.edit_focus == 1 {
                         app.edit_mode = EditMode::NoteInput;
-                        app.input = String::from(&app.note.command[0]);
+                        app.input = String::from(&app.note.content[0]);
                         app.input_index = app.input.len();
                     }
                 }
                 KeyCode::Enter => {
                     app.notes.push(Note {
                         tag: String::from(&app.note.tag),
-                        command: vec![String::from(&app.note.command[0])],
+                        title: String::from(""),
+                        content: vec![String::from(&app.note.content[0])],
                     });
                     app.note = Note {
                         tag: String::from(""),
-                        command: vec![String::from("")],
+                        title: String::from(""),
+                        content: vec![String::from("")],
                     };
                     app.edit_mode = EditMode::Direct;
                     app.mode = AppMode::View;
@@ -165,7 +167,7 @@ impl InputPopup {
             .block(Block::default().title("Tag").borders(Borders::ALL))
             .style(tag_style);
 
-        let mut note_text: &str = app.note.command[0].as_ref();
+        let mut note_text: &str = app.note.content[0].as_ref();
         let mut note_style = Style::default();
 
         if app.edit_focus == 1 {

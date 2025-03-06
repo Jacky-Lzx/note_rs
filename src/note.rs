@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use tui::style::{Color, Style};
-use tui::text::{Span, Spans};
+// use tui::style::{Color, Style};
+// use tui::text::{Span, Spans};
 
 type Link = Option<Rc<RefCell<Note>>>;
 pub type RefNote = Rc<RefCell<Note>>;
@@ -41,6 +41,7 @@ impl Note {
         child.borrow_mut().parent = Some(parent.clone());
     }
 
+    #[allow(dead_code)]
     pub fn print_children(&self) {
         println!("{}Title: {}", "  ".repeat(self.depth), self.title);
         println!(
@@ -55,16 +56,16 @@ impl Note {
         }
     }
 
-    pub fn format<'a>(&self, index: i32, extra_style: Style) -> Spans<'a> {
-        // let tag_style = base_style.add
-        let title_style = Style::default().fg(Color::LightBlue).patch(extra_style);
-        let ret = Spans::from(vec![
-            Span::styled(format!("{}", index), extra_style),
-            Span::styled(": ", extra_style),
-            Span::styled(format!("{}", self.title), title_style),
-            Span::styled(" - ", extra_style),
-            Span::styled(format!("{:?}", self.content), extra_style),
-        ]);
-        return ret;
-    }
+    // pub fn format<'a>(&self, index: i32, extra_style: Style) -> Spans<'a> {
+    // let tag_style = base_style.add
+    // let title_style = Style::default().fg(Color::LightBlue).patch(extra_style);
+    // let ret = Spans::from(vec![
+    //     Span::styled(format!("{}", index), extra_style),
+    //     Span::styled(": ", extra_style),
+    //     Span::styled(format!("{}", self.title), title_style),
+    //     Span::styled(" - ", extra_style),
+    //     Span::styled(format!("{:?}", self.content), extra_style),
+    // ]);
+    // return ret;
+    // }
 }

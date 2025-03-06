@@ -1,32 +1,24 @@
+use std::fs::File;
+use std::io::{self, BufRead};
+
 use crate::note::Note;
 use crate::note::RefNote;
 pub struct Parser {}
 
 impl Parser {
-    fn solve_relationship(notes: &Vec<RefNote>) {
-        let length = notes.len();
-        if length == 0 {
-            return;
-        }
+    pub fn from_markdown() -> Vec<RefNote> {
+        // Read from file "Note.md"
+        let file = File::open("Note.md").unwrap();
+        // Store all lines in file to a vector
+        let lines: Vec<String> = io::BufReader::new(&file)
+            .lines()
+            .map(|l| l.expect("Could not parse line"))
+            .collect();
 
-        let mut stack: Vec<usize> = Vec::new();
-
-        for i in 0..notes.len() {
-            if i == 0 {
-                stack.push(i);
-                continue;
-            }
-            let mut parent_index = stack.pop().unwrap();
-            while notes[parent_index].borrow().depth >= notes[i].borrow().depth {
-                parent_index = stack.pop().unwrap();
-            }
-            Note::add_child(notes[parent_index].clone(), notes[i].clone());
-            stack.push(parent_index);
-            stack.push(i);
-        }
+        Parser::parse(lines)
     }
 
-    pub fn parse(lines: Vec<String>) -> Vec<RefNote> {
+    fn parse(lines: Vec<String>) -> Vec<RefNote> {
         // Parse the input
         let mut notes: Vec<RefNote> = Vec::new();
 
@@ -53,6 +45,29 @@ impl Parser {
         // println!();
 
         notes
+    }
+
+    fn solve_relationship(notes: &Vec<RefNote>) {
+        let length = notes.len();
+        if length == 0 {
+            return;
+        }
+
+        let mut stack: Vec<usize> = Vec::new();
+
+        for i in 0..notes.len() {
+            if i == 0 {
+                stack.push(i);
+                continue;
+            }
+            let mut parent_index = stack.pop().unwrap();
+            while notes[parent_index].borrow().depth >= notes[i].borrow().depth {
+                parent_index = stack.pop().unwrap();
+            }
+            Note::add_child(notes[parent_index].clone(), notes[i].clone());
+            stack.push(parent_index);
+            stack.push(i);
+        }
     }
 
     // start: inclusive, end: exclusive

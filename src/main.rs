@@ -1,4 +1,5 @@
 // pub mod input_popup;
+
 mod note;
 mod parser;
 mod utils;
@@ -9,13 +10,13 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::rc::Rc;
 
+use parser::Parser;
+
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::palette::tailwind::SLATE;
-use ratatui::style::{Modifier, Style, Stylize};
-use ratatui::symbols::border;
-use ratatui::text::{Line, Text};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Widget};
+use ratatui::style::{Modifier, Style};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use ratatui::{DefaultTerminal, Frame};
 
 fn main() -> io::Result<()> {
@@ -37,14 +38,13 @@ pub struct App {
     current_selection: Option<i32>,
     current_note_index: usize,
     edit_focus: usize,
-    note: Note,
-    exit: bool,
 }
 
 #[derive(PartialEq)]
 enum AppMode {
     View,
     Editing,
+    Exit,
 }
 #[derive(PartialEq)]
 enum EditMode {
@@ -63,7 +63,7 @@ fn find_note_index(notes: &Vec<RefNote>, note: &RefNote) -> usize {
 impl Default for App {
     fn default() -> App {
         // Read from file
-        let notes_file: Vec<RefNote> = read_from_markdown();
+        let notes_file: Vec<RefNote> = Parser::from_markdown();
         App {
             input: String::new(),
             input_index: 0,
@@ -71,36 +71,20 @@ impl Default for App {
             mode: AppMode::View,
             edit_mode: EditMode::Direct,
             edit_focus: 0,
-            // note: Note::from(String::from(""), String::from(""), 0),
-            note: Note::new(),
             current_selection: Some(0),
             current_note_index: 1,
-            exit: false,
         }
     }
 }
 
 impl App {
     fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
-        while !self.exit {
+        while self.mode != AppMode::Exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
         }
         Ok(())
     }
-}
-
-use parser::Parser;
-fn read_from_markdown() -> Vec<RefNote> {
-    // Read from file "Note.md"
-    let file = File::open("Note.md").unwrap();
-    // Store all lines in file to a vector
-    let lines: Vec<String> = io::BufReader::new(&file)
-        .lines()
-        .map(|l| l.expect("Could not parse line"))
-        .collect();
-
-    Parser::parse(lines)
 }
 
 impl App {
@@ -122,7 +106,7 @@ impl App {
                 KeyCode::Char('q') => {
                     // write_to_file(&app.notes);
                     // write_to_file_json(&app.notes);
-                    self.exit = true;
+                    self.mode = AppMode::Exit;
                 }
                 KeyCode::Char('e') => {
                     use std::process::Command;
@@ -289,6 +273,7 @@ impl App {
             AppMode::Editing => {
                 // InputPopup::key_event(&mut app, &key);
             }
+            AppMode::Exit => {}
         }
     }
 
